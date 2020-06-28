@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <bean id="date" class="java.util.Date"/>
+
+
+
+
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"/>
+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/1702_93_mengxr?useUnicode=true&amp;characterEncoding=UTF-8"/>
+        <property name="user" value="root"/>
+        <property name="password" value="123456"/>
+    </bean>
+
+    <!-- 对数据源进行代理 -->
+    <bean id="proxyDataSource"
+          class="org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy">
+        <constructor-arg>
+            <ref bean="dataSource" />
+        </constructor-arg>
+    </bean>
+    <!-- 直接使用数据源的代理对象 -->
+    <bean id="queryRunner" class="org.apache.commons.dbutils.QueryRunner">
+        <constructor-arg>
+            <ref bean="proxyDataSource" />
+        </constructor-arg>
+    </bean>
+
+    <!--&lt;!&ndash; 使用Annotation自动注册Bean，解决事物失效问题：在主容器中不扫描@Controller注解，在SpringMvc中只扫描@Controller注解 &ndash;&gt;-->
+    <!--<context:component-scan base-package="action" use-default-filters="true">-->
+        <!--<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>-->
+    <!--</context:component-scan>-->
+
+    <!--<aop:aspectj-autoproxy />-->
+
+
+
+
+
+    <!-- org.springframework.orm.hibernate4.LocalSessionFactoryBean类在spring-orm-4.2.4.RELEASE.jar包的org.springframework.orm.hibernate4包中 -->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="configLocation" value="classpath:hibernate.cfg.xml" /> <!-- 加载hibernate配置文件 -->
+    </bean>
+
+    <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory" />
+    </bean>
+
+    <!-- 第二种方式是使用注解的方式注入，主要用在java代码中使用注解注入properties文件中相应的value值 -->
+    <bean id="prop" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="locations">
+            <array>
+                <!--<value>classpath:resource/public.properties</value>-->
+            </array>
+        </property>
+    </bean>
+
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <tx:advice id="advice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="save*" propagation="REQUIRED"/>
+            <tx:method name="update*" propagation="REQUIRED"/>
+            <tx:method name="delete*" propagation="REQUIRED"/>
+            <tx:method name="*" propagation="SUPPORTS"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!--<aop:config>-->
+        <!--&lt;!&ndash; 配置哪些包的类要切入事务 &ndash;&gt;-->
+        <!--<aop:pointcut id="pointcut" expression="execution(* Service.impl.*.*(..))" />-->
+        <!--<aop:advisor advice-ref="advice" pointcut-ref="pointcut"/>&lt;!&ndash; 连接了<span style="font-family:Microsoft YaHei;">上</span>面的advice和上面的pointcut &ndash;&gt;-->
+        <!--&lt;!&ndash; aop:pointcut要写在aop:advisor上面，否则会报错 &ndash;&gt;-->
+    <!--</aop:config>-->
+    <context:component-scan base-package="action"/>
+    <!--<context:component-scan base-package="dbConnection"/>-->
+    <context:component-scan base-package="model"/>
+    <!--<context:component-scan base-package="*.*"/>-->
+
+
+</beans>
